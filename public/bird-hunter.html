@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b6cc4">
+<title>BIRD HUNTER</title>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3559472820355463" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Luckiest+Guy&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#ffd23f;--orange:#ff6b35;--ink:#10224a}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0d1b33;font-family:Fredoka,system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#wrap{position:relative;width:100%;height:100vh;height:100dvh;min-height:480px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#wrap[data-state="playing"] canvas{cursor:none}
+.display{font-family:'Luckiest Guy',Fredoka,system-ui,sans-serif;letter-spacing:1px}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));pointer-events:none;z-index:10;transition:opacity .3s}
+#wrap[data-state="menu"] #hud,#wrap[data-state="over"] #hud{opacity:0}
+#wrap[data-state="menu"] #hud *,#wrap[data-state="over"] #hud *{pointer-events:none!important}
+.group{display:flex;gap:8px;align-items:flex-start}
+.chip{pointer-events:auto;background:linear-gradient(160deg,rgba(255,255,255,.32),rgba(255,255,255,.1));border:1px solid rgba(255,255,255,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:16px;padding:6px 12px;min-width:64px;text-align:center;box-shadow:0 6px 18px rgba(10,30,70,.25),inset 0 1px 0 rgba(255,255,255,.6)}
+.lbl{display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;opacity:.9;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.val{display:block;font-family:'Luckiest Guy',Fredoka,sans-serif;font-size:clamp(20px,4.2vw,28px);line-height:1.05;text-shadow:0 2px 0 rgba(16,34,74,.55)}
+.sub{display:block;font-size:10px;font-weight:600;opacity:.85}
+.timer{min-width:84px}
+.bar{height:5px;border-radius:9px;background:rgba(16,34,74,.35);margin-top:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7cf29c,#ffd23f);border-radius:9px;transition:width .2s linear}
+.timer.low .val{color:#ff6b6b;animation:pulse .5s ease-in-out infinite alternate}
+.timer.low .bar i{background:linear-gradient(90deg,#ff4d6d,#ff8a4c)}
+@keyframes pulse{to{transform:scale(1.15)}}
+.icon-btn{pointer-events:auto;width:40px;height:40px;border-radius:14px;border:1px solid rgba(255,255,255,.55);background:linear-gradient(160deg,rgba(255,255,255,.35),rgba(255,255,255,.1));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 18px rgba(10,30,70,.25)}
+.icon-btn svg{width:20px;height:20px}
+.icon-btn:active{transform:scale(.92)}
+button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+
+/* Overlays */
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;background:radial-gradient(ellipse at center,rgba(12,30,70,.15),rgba(8,20,50,.62))}
+.overlay.hidden{display:none}
+.panel{position:relative;width:100%;max-width:470px;max-height:100%;overflow:auto;text-align:center;padding:clamp(20px,4.5vw,36px);border-radius:30px;background:linear-gradient(160deg,rgba(255,255,255,.3),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.5);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 30px 70px rgba(0,15,50,.45),inset 0 1px 0 rgba(255,255,255,.7);animation:pop .55s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.title{font-family:'Luckiest Guy',Fredoka,sans-serif;font-size:clamp(46px,12vw,86px);line-height:.92;letter-spacing:2px}
+.title .a{display:block;color:var(--gold);text-shadow:0 2px 0 #f4a100,0 4px 0 #e08600,0 6px 0 #c66a00,0 8px 0 #a85200,0 14px 22px rgba(0,0,0,.45)}
+.title .b{display:block;color:var(--orange);text-shadow:0 2px 0 #e04e1a,0 4px 0 #c23c10,0 6px 0 #a02e08,0 8px 0 #7d2204,0 14px 22px rgba(0,0,0,.45)}
+.title.small{font-size:clamp(40px,10vw,64px)}
+.tag{margin:14px 0 18px;font-size:clamp(14px,3.6vw,17px);font-weight:600;opacity:.95;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.howto{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 20px;text-align:left}
+.howto div{background:rgba(16,34,74,.28);border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.35}
+.howto b{display:block;font-family:'Luckiest Guy',sans-serif;font-weight:400;letter-spacing:1px;font-size:15px;color:var(--gold);margin-bottom:2px}
+.best-line{margin-top:16px;font-weight:600;opacity:.95}
+.best-line span{font-family:'Luckiest Guy',sans-serif;color:var(--gold);font-size:20px;margin-left:4px}
+.row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:12px;align-items:center}
+.btn{font-family:'Luckiest Guy',Fredoka,sans-serif;font-size:clamp(19px,4.4vw,23px);letter-spacing:1.5px;padding:14px 32px 11px;border-radius:999px;border:none;color:#fff;cursor:pointer;background:linear-gradient(180deg,#ff9a5a,#ff5a1f);box-shadow:0 6px 0 #b8380a,0 12px 22px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.4);text-shadow:0 2px 0 rgba(120,30,0,.5);transition:transform .08s,box-shadow .08s;min-width:170px}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b8380a,0 6px 12px rgba(0,0,0,.3)}
+.btn.blue{background:linear-gradient(180deg,#6cc3ff,#2f7fe0);box-shadow:0 6px 0 #1b56a3,0 12px 22px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.4);text-shadow:0 2px 0 rgba(10,40,100,.5)}
+.btn.blue:active{box-shadow:0 2px 0 #1b56a3}
+.btn.green{background:linear-gradient(180deg,#7ee08a,#2fae4a);box-shadow:0 6px 0 #1e7a33,0 12px 22px rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.4);text-shadow:0 2px 0 rgba(10,70,20,.5)}
+.btn.green:active{box-shadow:0 2px 0 #1e7a33}
+
+/* Game over */
+.stars{display:flex;justify-content:center;gap:6px;margin-bottom:6px}
+.stars svg{width:clamp(40px,10vw,56px);height:clamp(40px,10vw,56px);fill:rgba(16,34,74,.35);stroke:rgba(255,255,255,.5);stroke-width:1;transform:scale(0)}
+.stars svg:nth-child(2){transform:scale(0) translateY(-10px)}
+.stars svg.on{fill:url(#starGrad);stroke:#c66a00;filter:drop-shadow(0 4px 6px rgba(0,0,0,.35))}
+.stars.anim svg{animation:starIn .5s cubic-bezier(.2,1.6,.4,1) forwards}
+.stars.anim svg:nth-child(2){animation-name:starIn2;animation-delay:.15s}
+.stars.anim svg:nth-child(3){animation-delay:.3s}
+@keyframes starIn{to{transform:scale(1)}}
+@keyframes starIn2{to{transform:scale(1.18) translateY(-10px)}}
+.msg{font-weight:600;font-size:16px;margin:8px 0 4px;opacity:.95}
+.record{display:inline-block;margin:6px 0 2px;padding:6px 16px;border-radius:999px;font-family:'Luckiest Guy',sans-serif;letter-spacing:1px;color:#5a2a00;background:linear-gradient(180deg,#fff1a1,#ffc93c);box-shadow:0 4px 0 #c98a00;animation:wiggle 1s ease-in-out infinite}
+.record.hidden{display:none}
+@keyframes wiggle{0%,100%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(3deg) scale(1.07)}}
+.final{margin:12px 0 14px}
+.final .lbl{font-size:12px}
+#finalScore{display:block;font-family:'Luckiest Guy',sans-serif;font-size:clamp(54px,14vw,78px);line-height:1;color:#fff;text-shadow:0 3px 0 #2f7fe0,0 6px 0 #1b56a3,0 12px 20px rgba(0,0,0,.4)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.stats div{background:rgba(16,34,74,.3);border-radius:14px;padding:10px 4px}
+.stats span{display:block;font-family:'Luckiest Guy',sans-serif;font-size:22px;color:var(--gold)}
+.stats small{font-size:11px;font-weight:600;opacity:.9;letter-spacing:.5px}
+
+/* Banner */
+#banner{position:absolute;left:50%;top:40%;pointer-events:none;text-align:center;opacity:0;z-index:15;transform:translate(-50%,-50%)}
+#banner .big{font-family:'Luckiest Guy',sans-serif;font-size:clamp(48px,13vw,96px);color:var(--gold);white-space:nowrap;text-shadow:0 3px 0 #e08600,0 6px 0 #a85200,0 14px 24px rgba(0,0,0,.45)}
+#banner .small{font-weight:700;font-size:clamp(14px,3.6vw,20px);text-shadow:0 2px 4px rgba(0,0,0,.5)}
+#banner.show{animation:banner 1.9s ease forwards}
+@keyframes banner{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}24%{transform:translate(-50%,-50%) scale(1)}78%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-80%) scale(.95)}}
+
+/* Fire button */
+#fire{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));width:92px;height:92px;border-radius:50%;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:12;border:4px solid rgba(255,255,255,.85);color:#fff;cursor:pointer;touch-action:none;background:radial-gradient(circle at 35% 28%,#ff9b9b,#e11d48 58%,#9f1239);box-shadow:0 8px 0 #7f1030,0 16px 28px rgba(0,0,0,.4),inset 0 3px 0 rgba(255,255,255,.4);font-family:'Luckiest Guy',sans-serif;font-size:17px;letter-spacing:1px;text-shadow:0 2px 0 rgba(90,0,20,.6)}
+#fire svg{width:30px;height:30px}
+#fire:active,#fire.press{transform:translateY(5px);box-shadow:0 3px 0 #7f1030,0 8px 16px rgba(0,0,0,.4)}
+#wrap.touch[data-state="playing"] #fire{display:flex}
+@media (max-width:520px){
+  .howto{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .chip{padding:5px 9px;min-width:54px;border-radius:13px}
+  .timer{min-width:70px}
+  .icon-btn{width:36px;height:36px;border-radius:12px}
+  .group{gap:6px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="starGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3a0"/><stop offset=".5" stop-color="#ffd23f"/><stop offset="1" stop-color="#ff9f1c"/></linearGradient></defs></svg>
+<div id="wrap" data-state="menu">
+  <canvas id="game" aria-label="Bird Hunter game area"></canvas>
+
+  <div id="hud" role="status" aria-live="off">
+    <div class="group">
+      <div class="chip"><span class="lbl">SCORE</span><span class="val" id="score">0</span><span class="sub">BEST <b id="best">0</b></span></div>
+    </div>
+    <div class="chip timer" id="timerChip"><span class="lbl">TIME</span><span class="val" id="time">60</span><div class="bar"><i id="timeBar"></i></div></div>
+    <div class="group">
+      <div class="chip"><span class="lbl">LEVEL</span><span class="val" id="level">1</span></div>
+      <button class="icon-btn" id="btnPause" aria-label="Pause game"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg></button>
+      <button class="icon-btn" id="btnMute" aria-label="Mute sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path id="muteWaves" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+    </div>
+  </div>
+
+  <div id="banner"><div class="big" id="bannerBig">LEVEL 1</div><div class="small" id="bannerSmall">Get ready!</div></div>
+
+  <button id="fire" aria-label="Fire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>FIRE</button>
+
+  <div class="overlay" id="startScreen">
+    <div class="panel">
+      <h1 class="title"><span class="a">BIRD</span><span class="b">HUNTER</span></h1>
+      <p class="tag">Hit as many birds as you can in 60 seconds!</p>
+      <div class="howto">
+        <div><b>Desktop</b>Aim with the mouse, click or press Space to shoot.</div>
+        <div><b>Mobile</b>Tap to shoot, drag to aim and press FIRE.</div>
+        <div><b>Score</b>Each hit is +10 points. Every 100 points is a new level.</div>
+        <div><b>Keys</b>P = pause, R = restart, M = mute.</div>
+      </div>
+      <button class="btn" id="btnStart">START GAME</button>
+      <p class="best-line">High score <span id="menuBest">0</span></p>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="pauseScreen">
+    <div class="panel">
+      <h2 class="title small"><span class="a">PAUSED</span></h2>
+      <p class="tag" id="pauseInfo">Take a breath, hunter.</p>
+      <div class="col">
+        <button class="btn green" id="btnResume">RESUME</button>
+        <button class="btn" id="btnRestart">RESTART</button>
+        <button class="btn blue" id="btnMenu">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="overScreen">
+    <div class="panel">
+      <div class="stars" id="stars">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+      </div>
+      <h2 class="title small"><span class="b">GAME OVER</span></h2>
+      <p class="msg" id="overMsg">Time&apos;s up!</p>
+      <div class="record hidden" id="newRecord">NEW HIGH SCORE!</div>
+      <div class="final"><span class="lbl">FINAL SCORE</span><span id="finalScore">0</span></div>
+      <div class="stats">
+        <div><span id="stLevel">1</span><small>LEVEL</small></div>
+        <div><span id="stHits">0</span><small>BIRDS HIT</small></div>
+        <div><span id="stAcc">0%</span><small>ACCURACY</small></div>
+        <div><span id="stBest">0</span><small>BEST</small></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnAgain">PLAY AGAIN</button>
+        <button class="btn blue" id="btnMenu2">MENU</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const wrap = $('wrap'), cvs = $('game'), ctx = cvs.getContext('2d');
+const GAME_TIME = 60, POINTS = 10, PER_LEVEL = 100;
+let W = 0, H = 0, DPR = 1, bgLayer = null, fgLayer = null, clouds = [];
+const rng = s => () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const pick = a => a[(Math.random() * a.length) | 0];
+
+const PALETTES = [
+  {body:'#ff4d6d',dark:'#a4133c',light:'#ffb3c1',belly:'#fff0f3',wing:'#ff758f'},
+  {body:'#3a86ff',dark:'#1a4fa8',light:'#a8ccff',belly:'#e8f1ff',wing:'#5fa0ff'},
+  {body:'#ffbe0b',dark:'#c77d00',light:'#fff1a8',belly:'#fffbe6',wing:'#ffd60a'},
+  {body:'#2ec4b6',dark:'#127a70',light:'#a8f0e8',belly:'#eafffb',wing:'#48dccf'},
+  {body:'#8338ec',dark:'#4c1a99',light:'#c9a6ff',belly:'#f3ebff',wing:'#9d5cff'},
+  {body:'#fb5607',dark:'#a33400',light:'#ffb38a',belly:'#fff1e8',wing:'#ff7b3a'},
+  {body:'#06d6a0',dark:'#038a66',light:'#9ff5dc',belly:'#eafff8',wing:'#2ee6b5'},
+];
+
+/* ---------------- Storage ---------------- */
+let high = 0;
+try { high = parseInt(localStorage.getItem('birdHunterHigh') || '0', 10) || 0; } catch (e) {}
+const saveHigh = () => { try { localStorage.setItem('birdHunterHigh', String(high)); } catch (e) {} };
+
+/* ---------------- Audio ---------------- */
+let actx = null, master = null, noiseBuf = null, muted = false;
+function initAudio() {
+  try {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = new AC();
+      master = actx.createGain();
+      master.gain.value = muted ? 0 : 0.55;
+      master.connect(actx.destination);
+      noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.6, actx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) {}
+}
+function tone(freq, dur, type = 'sine', vol = 0.2, when = 0, endFreq = 0) {
+  if (!actx) return;
+  const t = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (endFreq) o.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.03);
+}
+function noise(dur, vol, f0, f1, when = 0) {
+  if (!actx) return;
+  const t = actx.currentTime + when, s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
+  s.buffer = noiseBuf; f.type = 'lowpass';
+  f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + 0.03);
+}
+const sfx = {
+  shot() { noise(0.38, 0.9, 5000, 180); tone(170, 0.2, 'sine', 0.55, 0, 38); noise(0.12, 0.25, 9000, 3000, 0.22); },
+  hit() { tone(1150, 0.11, 'square', 0.07, 0, 2300); tone(1900, 0.14, 'square', 0.05, 0.07, 850); tone(1319, 0.2, 'triangle', 0.2, 0.03); tone(1976, 0.28, 'triangle', 0.14, 0.1); },
+  miss() { tone(300, 0.08, 'triangle', 0.05, 0.05, 200); },
+  level() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.28, 'triangle', 0.22, i * 0.085)); },
+  tick() { tone(1046, 0.07, 'sine', 0.16); },
+  over() { [784, 659, 523, 392, 262].forEach((f, i) => tone(f, 0.4, 'triangle', 0.22, i * 0.16)); },
+  record() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, 'square', 0.06, 0.95 + i * 0.1)); },
+  click() { tone(660, 0.09, 'triangle', 0.16, 0, 990); },
+  chirp() { const b = 2400 + Math.random() * 1300; tone(b, 0.07, 'sine', 0.035, 0, b * 1.4); tone(b * 1.08, 0.08, 'sine', 0.03, 0.1, b * 1.5); },
+};
+
+/* ---------------- Scene builders ---------------- */
+function makeLayer() {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
+  const g = c.getContext('2d'); g.scale(DPR, DPR);
+  return [c, g];
+}
+function poly(g, pts) { g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath(); g.fill(); }
+function haze(g, baseY, h, color) {
+  const gr = g.createLinearGradient(0, baseY - h, 0, baseY);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(1, color);
+  g.fillStyle = gr; g.fillRect(0, baseY - h, W, h);
+}
+function mountains(g, baseY, minH, maxH, count, lit, shade, snowLit, snowShade, seed) {
+  const r = rng(seed), span = W / (count - 1), peaks = [];
+  for (let i = 0; i < count; i++) peaks.push({ x: i * span + (r() - .5) * span * .6, h: minH + r() * (maxH - minH), w: span * (.75 + r() * .6) });
+  peaks.sort((a, b) => b.h - a.h);
+  g.fillStyle = shade; g.fillRect(0, baseY - 1, W, H * 0.12);
+  for (const p of peaks) {
+    const ax = p.x, ay = baseY - p.h, L = ax - p.w, R = ax + p.w * .95, M = ax + p.w * .18;
+    const jx = (ax + M) / 2 + (r() - .5) * p.w * .08, jy = (ay + baseY) / 2;
+    g.fillStyle = lit; poly(g, [ax, ay, L, baseY + 1, M, baseY + 1, jx, jy]);
+    g.fillStyle = shade; poly(g, [ax, ay, jx, jy, M, baseY + 1, R, baseY + 1]);
+    if (snowLit && p.h > minH + (maxH - minH) * .3) {
+      const t = .3 + r() * .06;
+      const lx = ax + (L - ax) * t, ly = ay + (baseY - ay) * t;
+      const rx = ax + (R - ax) * t, ry = ay + (baseY - ay) * t;
+      const mx = ax + (jx - ax) * t * 2, my = ay + (jy - ay) * t * 2;
+      const dip = p.h * .06;
+      g.fillStyle = snowLit;
+      poly(g, [ax, ay, lx, ly, lx + (mx - lx) * .35, ly + dip, lx + (mx - lx) * .7, ly - dip * .4, mx, my + dip * .8, mx, my]);
+      g.fillStyle = snowShade;
+      poly(g, [ax, ay, mx, my, mx, my + dip * .8, mx + (rx - mx) * .4, ry - dip * .3, mx + (rx - mx) * .7, ry + dip, rx, ry]);
+    }
+  }
+}
+function pine(g, x, y, h, lit, shade, trunk) {
+  const w = h * .38;
+  g.fillStyle = trunk; g.fillRect(x - h * .035, y - h * .16, h * .07, h * .17);
+  for (let i = 0; i < 3; i++) {
+    const by = y - h * .12 - i * h * .24, tw = w * (1 - i * .24), top = by - h * .4;
+    g.fillStyle = lit; poly(g, [x, top, x - tw, by, x, by + h * .02]);
+    g.fillStyle = shade; poly(g, [x, top, x, by + h * .02, x + tw, by]);
+  }
+}
+function bush(g, x, y, s, r) {
+  for (let i = 0; i < 3; i++) {
+    const cx = x + (i - 1) * s * .8, cy = y - (i === 1 ? s * .4 : 0) + r() * s * .2, rad = s * (i === 1 ? 1 : .8);
+    const gr = g.createRadialGradient(cx - rad * .4, cy - rad * .5, rad * .1, cx, cy, rad);
+    gr.addColorStop(0, '#6fcf5a'); gr.addColorStop(.6, '#38892f'); gr.addColorStop(1, '#1e5520');
+    g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.fill();
+  }
+}
+function buildBg() {
+  const [c, g] = makeLayer();
+  const hz = H * .74;
+  let gr = g.createLinearGradient(0, 0, 0, hz);
+  gr.addColorStop(0, '#2563c0'); gr.addColorStop(.45, '#5fa6ea'); gr.addColorStop(.8, '#b6dcf6'); gr.addColorStop(1, '#ffe3bd');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  const sx = W * .17, sy = H * .19, sr = Math.min(W, H) * .065;
+  gr = g.createRadialGradient(sx, sy, 0, sx, sy, sr * 7);
+  gr.addColorStop(0, 'rgba(255,248,210,.9)'); gr.addColorStop(.14, 'rgba(255,232,160,.45)'); gr.addColorStop(1, 'rgba(255,220,150,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  gr = g.createRadialGradient(sx - sr * .3, sy - sr * .3, sr * .1, sx, sy, sr);
+  gr.addColorStop(0, '#fffef2'); gr.addColorStop(1, '#ffd56a');
+  g.fillStyle = gr; g.beginPath(); g.arc(sx, sy, sr, 0, Math.PI * 2); g.fill();
+
+  mountains(g, H * .68, H * .14, H * .34, 7, '#bccde8', '#97accf', '#ffffff', '#d3dff0', 11);
+  haze(g, H * .68, H * .36, 'rgba(214,232,250,.6)');
+  mountains(g, H * .72, H * .1, H * .24, 9, '#7f9ec6', '#5b79a6', '#f7fbff', '#c3d2ea', 23);
+  haze(g, H * .72, H * .26, 'rgba(205,226,244,.45)');
+  mountains(g, H * .775, H * .05, H * .13, 12, '#63a078', '#467b5b', null, null, 37);
+  haze(g, H * .775, H * .14, 'rgba(195,222,225,.32)');
+
+  gr = g.createLinearGradient(0, H * .77, 0, H);
+  gr.addColorStop(0, '#5fa34b'); gr.addColorStop(1, '#2d6a28');
+  g.fillStyle = gr; g.fillRect(0, H * .77, W, H);
+
+  const r = rng(91), step = 13, n = Math.ceil(W / step) + 2;
+  for (let i = 0; i < n; i++) pine(g, i * step + r() * 9 - 6, H * .79 + r() * H * .01, H * (.045 + r() * .035), '#4b8a63', '#33694a', '#3b2a20');
+  for (let i = 0; i < n; i++) pine(g, i * step + r() * 9, H * .815 + r() * H * .012, H * (.055 + r() * .04), '#3b7a4c', '#285a37', '#3b2a20');
+  return c;
+}
+function buildFg() {
+  const [c, g] = makeLayer();
+  const r = rng(7), top = H * .87;
+  g.beginPath(); g.moveTo(0, H); g.lineTo(0, top);
+  for (let x = 0; x <= W + 30; x += 30) g.lineTo(x, top + Math.sin(x * .006 + 1) * H * .02 + Math.sin(x * .017) * H * .008);
+  g.lineTo(W, H); g.closePath();
+  let gr = g.createLinearGradient(0, top - H * .03, 0, H);
+  gr.addColorStop(0, '#58a63f'); gr.addColorStop(1, '#1d4a1b');
+  g.fillStyle = gr; g.fill();
+  g.strokeStyle = 'rgba(190,240,140,.35)'; g.lineWidth = 2;
+  g.beginPath();
+  for (let x = 0; x <= W + 30; x += 30) { const y = top + Math.sin(x * .006 + 1) * H * .02 + Math.sin(x * .017) * H * .008; x ? g.lineTo(x, y) : g.moveTo(x, y); }
+  g.stroke();
+
+  const trees = [], gap = 48, n = Math.ceil(W / gap) + 1;
+  for (let i = 0; i < n; i++) {
+    const x = i * gap + r() * 36 - 12, edge = Math.abs(x / W - .5) * 2;
+    if (edge < .35 && r() < .55) continue;
+    trees.push({ x, h: H * (.08 + r() * .06 + edge * edge * .1), y: H * .9 + r() * H * .08 });
+  }
+  trees.sort((a, b) => a.y - b.y);
+  for (const t of trees) pine(g, t.x, t.y, t.h, '#2f8040', '#1c5a2a', '#4a3020');
+  for (let i = 0; i < W / 28; i++) bush(g, r() * W, H * .975 + r() * H * .04, H * (.018 + r() * .022), r);
+
+  gr = g.createRadialGradient(W / 2, H * .45, Math.min(W, H) * .4, W / 2, H * .5, Math.max(W, H) * .8);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(5,15,40,.32)');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  return c;
+}
+function makeCloud(x, y, depth) {
+  const R = clamp(W * .035, 20, 54) * depth, n = 4 + ((Math.random() * 4) | 0);
+  const w = Math.ceil(n * R * .95 + R * 3), h = Math.ceil(R * 3.2);
+  const c = document.createElement('canvas'); c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
+  const g = c.getContext('2d'); g.scale(DPR, DPR);
+  const cx = w / 2, base = h * .74, puffs = [];
+  for (let i = 0; i < n; i++) {
+    const k = i - (n - 1) / 2, rad = R * (.7 + Math.random() * .5) * (1 - Math.abs(k) / n * .7);
+    puffs.push({ x: cx + k * R * .9 + (Math.random() - .5) * R * .3, y: base - rad * .55 - Math.random() * R * .25, r: rad });
+  }
+  g.fillStyle = 'rgba(150,178,212,.55)';
+  g.beginPath(); g.ellipse(cx, base + R * .1, n * R * .5, R * .32, 0, 0, Math.PI * 2); g.fill();
+  for (const p of puffs) { g.fillStyle = '#c9d8ec'; g.beginPath(); g.arc(p.x + p.r * .08, p.y + p.r * .14, p.r, 0, Math.PI * 2); g.fill(); }
+  for (const p of puffs) {
+    const gr = g.createRadialGradient(p.x - p.r * .35, p.y - p.r * .45, p.r * .05, p.x, p.y, p.r);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(.6, '#f3f7fc'); gr.addColorStop(1, '#d6e2f1');
+    g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI * 2); g.fill();
+  }
+  return { img: c, x, y, w, h, depth, speed: (6 + depth * 16) * clamp(W / 1000, .5, 1.3) };
+}
+function buildClouds() {
+  clouds = [];
+  const count = Math.max(5, Math.round(W / 170));
+  for (let i = 0; i < count; i++) clouds.push(makeCloud(Math.random() * W, H * (.03 + Math.random() * .42), .5 + Math.random() * .8));
+  clouds.sort((a, b) => a.depth - b.depth);
+}
+
+/* ---------------- Game state ---------------- */
+let state = 'menu', score = 0, level = 1, timeLeft = GAME_TIME, shots = 0, hits = 0;
+let birds = [], parts = [], popups = [];
+let spawnTimer = 0, chirpTimer = 2, lastTick = GAME_TIME, cooldown = 0, recoil = 0, flash = 0, shake = 0;
+let combo = 0, lastHit = -10, clock = 0;
+const aim = { x: 0, y: 0, set: false };
+
+function resize() {
+  const r = wrap.getBoundingClientRect();
+  const nw = Math.max(300, Math.round(r.width)), nh = Math.max(400, Math.round(r.height));
+  const nd = Math.min(window.devicePixelRatio || 1, 2);
+  if (nw === W && nh === H && nd === DPR) return;
+  const sx = W ? nw / W : 1, sy = H ? nh / H : 1;
+  W = nw; H = nh; DPR = nd;
+  cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
+  bgLayer = buildBg(); fgLayer = buildFg(); buildClouds();
+  for (const b of birds) { b.x *= sx; b.baseY *= sy; b.y *= sy; }
+  if (!aim.set) { aim.x = W / 2; aim.y = H * .4; } else { aim.x *= sx; aim.y *= sy; }
+}
+
+function difficulty() {
+  const L = state === 'menu' ? 1 : level;
+  return {
+    speed: 110 + L * 32,
+    interval: Math.max(.28, 1.2 - L * .1),
+    max: state === 'menu' ? 4 : Math.min(14, Math.round(3 + L * 1.3)),
+    flock: L >= 3 ? Math.min(.5, (L - 2) * .1) : 0,
+    wobble: L >= 4,
+    shrink: 1 - Math.min(L - 1, 8) * .035,
+  };
+}
+function spawnBird(d, forceDir, yHint) {
+  const dir = forceDir || (Math.random() < .5 ? 1 : -1);
+  const depth = .6 + Math.random() * .65;
+  const size = clamp(Math.min(W, H) * .036, 16, 30) * depth * d.shrink;
+  const speedScale = clamp(W / 1100, .55, 1.2);
+  const y = yHint != null ? yHint : H * (.1 + Math.random() * .48);
+  birds.push({
+    x: dir > 0 ? -size * 3 : W + size * 3, y, baseY: y, dir, depth, size,
+    vx: (d.speed + Math.random() * 60) * (.6 + depth * .4) * speedScale * dir,
+    amp: (8 + Math.random() * 22 + level * 3) * depth, freq: 1 + Math.random() * 1.4 + level * .12,
+    phase: Math.random() * 6.28, flap: Math.random() * 6.28, flapSpeed: 13 + Math.random() * 5,
+    wobble: d.wobble && Math.random() < .5,
+    pal: pick(PALETTES), alive: true, vy: 0, rot: 0, t: 0,
+  });
+}
+
+function shoot(x, y) {
+  if (state !== 'playing' || cooldown > 0) return;
+  cooldown = .17; shots++; recoil = 1; flash = .08; shake = 7;
+  sfx.shot();
+  parts.push({ type: 'ring', x, y, life: .35, max: .35 });
+  const order = birds.filter(b => b.alive).sort((a, b) => b.depth - a.depth);
+  let target = null;
+  for (const b of order) {
+    const s = b.size / 30, cx = b.x + b.dir * 5 * s, cy = b.y - 3 * s;
+    if (Math.hypot(x - cx, y - cy) < 31 * s) { target = b; break; }
+  }
+  if (target) {
+    target.alive = false; target.vy = -160; target.rot = 0;
+    hits++; score += POINTS;
+    combo = clock - lastHit < 1.2 ? combo + 1 : 1; lastHit = clock;
+    sfx.hit();
+    const n = 14;
+    for (let i = 0; i < n; i++) parts.push({
+      type: 'feather', x: target.x, y: target.y, vx: (Math.random() - .5) * 280, vy: (Math.random() - .85) * 260,
+      life: 1.4 + Math.random(), max: 2.4, rot: Math.random() * 6, vr: (Math.random() - .5) * 9,
+      size: (4 + Math.random() * 5) * (target.size / 26), color: pick([target.pal.body, target.pal.light, target.pal.wing, target.pal.belly]), sway: Math.random() * 6,
+    });
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 120 + Math.random() * 220;
+      parts.push({ type: 'spark', x: target.x, y: target.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: .45, max: .45, size: 3 + Math.random() * 3, color: pick(['#fff3a0', '#ffd23f', '#ffffff']) });
+    }
+    popups.push({ x: target.x, y: target.y - target.size, text: '+' + POINTS, life: 1, max: 1, color: '#ffd23f', size: 30 });
+    if (combo >= 2) popups.push({ x: target.x, y: target.y - target.size + 30, text: 'COMBO x' + combo, life: 1.1, max: 1.1, color: '#ff6b9a', size: 20 });
+    const newLevel = 1 + Math.floor(score / PER_LEVEL);
+    if (newLevel > level) {
+      level = newLevel;
+      showBanner('LEVEL ' + level, pick(['Birds are faster!', 'Watch out, they dodge!', 'More birds incoming!', 'Sharpen your aim!']));
+      sfx.level();
+    }
+    updateHUD();
+  } else {
+    sfx.miss();
+    for (let i = 0; i < 5; i++) parts.push({ type: 'dust', x: x + (Math.random() - .5) * 10, y: y + (Math.random() - .5) * 10, vx: (Math.random() - .5) * 40, vy: -20 - Math.random() * 30, life: .5, max: .5, size: 4 + Math.random() * 5 });
+  }
+}
+
+/* ---------------- Update ---------------- */
+function update(dt) {
+  for (const c of clouds) { c.x += c.speed * dt; if (c.x - c.w / 2 > W) { c.x = -c.w / 2; c.y = H * (.03 + Math.random() * .42); } }
+  if (state === 'paused') return;
+  clock += dt;
+  const d = difficulty();
+
+  if (state === 'playing') {
+    timeLeft -= dt;
+    const sec = Math.ceil(timeLeft);
+    if (sec < lastTick) { lastTick = sec; if (sec <= 10 && sec > 0) sfx.tick(); updateHUD(); }
+    if (timeLeft <= 0) { timeLeft = 0; updateHUD(); endGame(); }
+  }
+  if (state === 'playing' || state === 'menu') {
+    spawnTimer -= dt;
+    const alive = birds.reduce((n, b) => n + (b.alive ? 1 : 0), 0);
+    if (spawnTimer <= 0 && alive < d.max) {
+      if (Math.random() < d.flock) {
+        const dir = Math.random() < .5 ? 1 : -1, y = H * (.15 + Math.random() * .4), k = 2 + ((Math.random() * 2) | 0);
+        for (let i = 0; i < k; i++) spawnBird(d, dir, y + (Math.random() - .5) * H * .12);
+      } else spawnBird(d);
+      spawnTimer = d.interval * (.6 + Math.random() * .8);
+    }
+    chirpTimer -= dt;
+    if (chirpTimer <= 0) { if (alive > 0 && state === 'playing') sfx.chirp(); chirpTimer = 1.5 + Math.random() * 2.5; }
+  }
+
+  for (let i = birds.length - 1; i >= 0; i--) {
+    const b = birds[i];
+    b.t += dt;
+    if (b.alive) {
+      b.x += b.vx * dt;
+      b.y = b.baseY + Math.sin(b.t * b.freq + b.phase) * b.amp + (b.wobble ? Math.sin(b.t * b.freq * 2.7) * b.amp * .5 : 0);
+      b.flap += b.flapSpeed * dt;
+      if ((b.dir > 0 && b.x > W + b.size * 4) || (b.dir < 0 && b.x < -b.size * 4)) birds.splice(i, 1);
+    } else {
+      b.vy += 1100 * dt; b.y += b.vy * dt; b.x += b.vx * .25 * dt;
+      b.rot += 7 * dt; b.flap += 4 * dt;
+      if (b.y > H + 80) birds.splice(i, 1);
+    }
+  }
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    p.life -= dt;
+    if (p.life <= 0) { parts.splice(i, 1); continue; }
+    if (p.type === 'feather') {
+      p.vy += 260 * dt; p.vx *= .97; p.vy *= .95;
+      p.x += (p.vx + Math.sin(clock * 4 + p.sway) * 40) * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    } else if (p.type === 'spark' || p.type === 'dust') {
+      p.vx *= .92; p.vy *= .92; p.x += p.vx * dt; p.y += p.vy * dt;
+    } else if (p.type === 'confetti') {
+      p.vy += 200 * dt; p.vx *= .99; p.x += (p.vx + Math.sin(clock * 5 + p.sway) * 30) * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    }
+  }
+  for (let i = popups.length - 1; i >= 0; i--) { const p = popups[i]; p.life -= dt; p.y -= 55 * dt; if (p.life <= 0) popups.splice(i, 1); }
+  cooldown = Math.max(0, cooldown - dt);
+  recoil = Math.max(0, recoil - dt * 6);
+  flash = Math.max(0, flash - dt);
+  shake *= Math.pow(.001, dt);
+}
+
+/* ---------------- Render ---------------- */
+function drawWing(p, f, far) {
+  ctx.save();
+  ctx.translate(far ? 4 : -2, -6);
+  ctx.scale(1, f);
+  const g = ctx.createLinearGradient(0, 0, -12, -36);
+  g.addColorStop(0, far ? p.dark : p.wing); g.addColorStop(1, far ? p.body : p.light);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(8, 0);
+  ctx.bezierCurveTo(8, -16, -2, -30, -20, -37);
+  ctx.lineTo(-17, -29); ctx.lineTo(-25, -27); ctx.lineTo(-19, -20); ctx.lineTo(-25, -15);
+  ctx.bezierCurveTo(-17, -8, -12, -2, -12, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function drawBird(b) {
+  const s = b.size / 30, p = b.pal;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  if (b.alive) {
+    ctx.fillStyle = 'rgba(10,30,60,.12)';
+    ctx.beginPath(); ctx.ellipse(0, b.size * 1.5, b.size * .9, b.size * .18, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.scale(b.dir * s, s);
+  ctx.rotate(b.alive ? Math.cos(b.t * b.freq + b.phase) * -.18 : b.rot);
+  const f = Math.sin(b.flap) * (b.alive ? 1 : .35);
+  drawWing(p, f * .85, true);
+  ctx.fillStyle = p.dark;
+  ctx.beginPath(); ctx.moveTo(-17, -3); ctx.lineTo(-39, -13); ctx.lineTo(-34, 0); ctx.lineTo(-40, 10); ctx.lineTo(-17, 4); ctx.closePath(); ctx.fill();
+  let g = ctx.createRadialGradient(-6, -8, 2, 0, 0, 27);
+  g.addColorStop(0, p.light); g.addColorStop(.45, p.body); g.addColorStop(1, p.dark);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 24, 15, 0, 0, Math.PI * 2); ctx.fill();
+  g = ctx.createRadialGradient(6, 6, 1, 6, 6, 15);
+  g.addColorStop(0, p.belly); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(5, 6, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = p.dark;
+  ctx.beginPath(); ctx.moveTo(14, -18); ctx.quadraticCurveTo(13, -31, 23, -29); ctx.quadraticCurveTo(18, -24, 21, -19); ctx.closePath(); ctx.fill();
+  g = ctx.createRadialGradient(16, -14, 1, 20, -9, 13);
+  g.addColorStop(0, p.light); g.addColorStop(.5, p.body); g.addColorStop(1, p.dark);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(20, -9, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffb703';
+  ctx.beginPath(); ctx.moveTo(30, -12); ctx.lineTo(44, -7.5); ctx.lineTo(30, -5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#e85d04';
+  ctx.beginPath(); ctx.moveTo(30, -7); ctx.lineTo(42, -7); ctx.lineTo(30, -3); ctx.closePath(); ctx.fill();
+  if (b.alive) {
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(23, -12, 4.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#14141f'; ctx.beginPath(); ctx.arc(24.6, -12, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(25.4, -13.2, 1, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#14141f'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(20.5, -15); ctx.lineTo(26.5, -9); ctx.moveTo(26.5, -15); ctx.lineTo(20.5, -9); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,120,150,.5)';
+  ctx.beginPath(); ctx.ellipse(21, -3.5, 3.6, 2, 0, 0, Math.PI * 2); ctx.fill();
+  drawWing(p, f, false);
+  ctx.restore();
+}
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+function drawGun() {
+  const k = clamp(Math.min(W, H) / 800, .65, 1.1);
+  const px = W / 2, py = H + 20 * k;
+  const ang = Math.atan2(aim.y - py, aim.x - px);
+  const len = clamp(H * .3, 140, 250) * (1 - recoil * .12);
+  ctx.save(); ctx.translate(px, py); ctx.rotate(ang);
+  let g = ctx.createLinearGradient(0, -16 * k, 0, 16 * k);
+  g.addColorStop(0, '#c07a3e'); g.addColorStop(.5, '#8a4f22'); g.addColorStop(1, '#4e2a10');
+  ctx.fillStyle = g; rr(-30 * k, -15 * k, len * .52, 30 * k, 10 * k); ctx.fill();
+  g = ctx.createLinearGradient(0, -9 * k, 0, 9 * k);
+  g.addColorStop(0, '#3a404d'); g.addColorStop(.35, '#b6c0d2'); g.addColorStop(.6, '#5b6475'); g.addColorStop(1, '#1b1e26');
+  ctx.fillStyle = g; rr(len * .34, -8 * k, len * .66, 16 * k, 4 * k); ctx.fill();
+  ctx.fillStyle = '#1b1e26'; rr(len * .34, -11 * k, len * .1, 22 * k, 4 * k); ctx.fill();
+  ctx.fillStyle = '#2a2f3a'; rr(len - 6 * k, -10 * k, 12 * k, 20 * k, 3 * k); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(len * .45, -6 * k, len * .5, 2 * k);
+  if (flash > 0) {
+    const fs = (34 + Math.random() * 16) * k;
+    g = ctx.createRadialGradient(len + 10 * k, 0, 0, len + 10 * k, 0, fs);
+    g.addColorStop(0, 'rgba(255,255,230,1)'); g.addColorStop(.3, 'rgba(255,210,80,.9)'); g.addColorStop(1, 'rgba(255,120,20,0)');
+    ctx.fillStyle = g; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, r = i % 2 ? fs * .45 : fs; ctx.lineTo(len + 10 * k + Math.cos(a) * r * 1.4, Math.sin(a) * r * .7); }
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawCrosshair() {
+  const x = aim.x, y = aim.y, r = 20 * (1 + recoil * .35);
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (const [col, lw] of [['rgba(10,20,40,.6)', 5], ['#ffffff', 2.4]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - r - 9, y); ctx.lineTo(x - 7, y); ctx.moveTo(x + 7, y); ctx.lineTo(x + r + 9, y);
+    ctx.moveTo(x, y - r - 9); ctx.lineTo(x, y - 7); ctx.moveTo(x, y + 7); ctx.lineTo(x, y + r + 9);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#ff3355'; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  if (shake > .3) ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+  ctx.drawImage(bgLayer, -8, -8, W + 16, H + 16);
+  for (const c of clouds) { ctx.globalAlpha = .75 + c.depth * .2; ctx.drawImage(c.img, c.x - c.w / 2, c.y - c.h / 2, c.w, c.h); }
+  ctx.globalAlpha = 1;
+  const sorted = birds.slice().sort((a, b) => a.depth - b.depth);
+  for (const b of sorted) drawBird(b);
+  ctx.drawImage(fgLayer, -8, -8, W + 16, H + 16);
+  for (const p of parts) {
+    const a = clamp(p.life / p.max, 0, 1);
+    ctx.globalAlpha = p.type === 'feather' ? Math.min(1, a * 2) : a;
+    if (p.type === 'feather') {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size * .36, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(-p.size, 0); ctx.lineTo(p.size, 0); ctx.stroke();
+      ctx.restore();
+    } else if (p.type === 'spark') {
+      ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a + .5, 0, Math.PI * 2); ctx.fill();
+    } else if (p.type === 'ring') {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 * a; ctx.beginPath(); ctx.arc(p.x, p.y, 8 + (1 - a) * 34, 0, Math.PI * 2); ctx.stroke();
+    } else if (p.type === 'dust') {
+      ctx.fillStyle = 'rgba(235,240,250,.8)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2 - a), 0, Math.PI * 2); ctx.fill();
+    } else if (p.type === 'confetti') {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.color; ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of popups) {
+    const a = clamp(p.life / p.max, 0, 1), sc = a > .85 ? 1 + (a - .85) * 4 : 1;
+    ctx.globalAlpha = Math.min(1, a * 1.8);
+    ctx.font = `${Math.round(p.size * sc)}px 'Luckiest Guy', Fredoka, sans-serif`;
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(16,34,74,.85)'; ctx.strokeText(p.text, p.x, p.y);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y);
+  }
+  ctx.globalAlpha = 1;
+  if (state !== 'menu') drawGun();
+  if (state === 'playing' && aim.set) drawCrosshair();
+  ctx.restore();
+}
+
+/* ---------------- UI ---------------- */
+const ui = {
+  score: $('score'), best: $('best'), time: $('time'), level: $('level'), bar: $('timeBar'), timerChip: $('timerChip'),
+  start: $('startScreen'), pause: $('pauseScreen'), over: $('overScreen'), menuBest: $('menuBest'),
+};
+function setState(s) { state = s; wrap.dataset.state = s; }
+function updateHUD() {
+  ui.score.textContent = score;
+  ui.best.textContent = Math.max(high, score);
+  const sec = Math.ceil(timeLeft);
+  ui.time.textContent = sec;
+  ui.level.textContent = level;
+  ui.bar.style.width = (timeLeft / GAME_TIME * 100) + '%';
+  ui.timerChip.classList.toggle('low', sec <= 10 && state === 'playing');
+}
+function showOverlay(el) { for (const o of [ui.start, ui.pause, ui.over]) o.classList.toggle('hidden', o !== el); }
+function showBanner(big, small) {
+  const b = $('banner'); $('bannerBig').textContent = big; $('bannerSmall').textContent = small;
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+}
+function startGame() {
+  initAudio(); sfx.click();
+  score = 0; level = 1; timeLeft = GAME_TIME; shots = 0; hits = 0; combo = 0;
+  birds = []; parts = []; popups = []; spawnTimer = .5; lastTick = GAME_TIME; cooldown = .25;
+  setState('playing'); showOverlay(null); updateHUD();
+  showBanner('LEVEL 1', 'Get ready, hunter!');
+  sfx.level();
+}
+function pauseGame() {
+  if (state !== 'playing') return;
+  setState('paused'); showOverlay(ui.pause); sfx.click();
+  $('pauseInfo').textContent = `Score ${score} · Level ${level} · ${Math.ceil(timeLeft)}s left`;
+  $('btnResume').focus();
+}
+function resumeGame() {
+  if (state !== 'paused') return;
+  initAudio(); sfx.click(); setState('playing'); showOverlay(null); cooldown = .2;
+}
+function toMenu() {
+  sfx.click(); setState('menu'); ui.menuBest.textContent = high; showOverlay(ui.start); updateHUD();
+  $('banner').classList.remove('show');
+}
+function endGame() {
+  setState('over');
+  const isRecord = score > high && score > 0;
+  if (isRecord) { high = score; saveHigh(); }
+  const acc = shots ? Math.round(hits / shots * 100) : 0;
+  const starsN = score >= 300 ? 3 : score >= 150 ? 2 : score >= 50 ? 1 : 0;
+  $('overMsg').textContent = starsN === 3 ? 'Legendary hunter! Incredible aim!' : starsN === 2 ? 'Great shooting! Almost a legend.' : starsN === 1 ? "Nice work! Time's up." : "Time's up! The birds escaped this time.";
+  $('newRecord').classList.toggle('hidden', !isRecord);
+  $('stLevel').textContent = level; $('stHits').textContent = hits; $('stAcc').textContent = acc + '%'; $('stBest').textContent = high;
+  const stars = $('stars'); stars.classList.remove('anim');
+  [...stars.children].forEach((s, i) => s.classList.toggle('on', i < starsN));
+  void stars.offsetWidth; stars.classList.add('anim');
+  showOverlay(ui.over);
+  const fs = $('finalScore'), t0 = performance.now(), target = score;
+  (function count(now) { const k = Math.min(1, (now - t0) / 1000); fs.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(count); })(t0);
+  sfx.over();
+  if (isRecord) {
+    sfx.record();
+    for (let i = 0; i < 120; i++) parts.push({ type: 'confetti', x: Math.random() * W, y: -20 - Math.random() * H * .4, vx: (Math.random() - .5) * 80, vy: 60 + Math.random() * 120, life: 4 + Math.random() * 2, max: 6, rot: Math.random() * 6, vr: (Math.random() - .5) * 10, size: 8 + Math.random() * 6, sway: Math.random() * 6, color: pick(['#ffd23f', '#ff6b35', '#3a86ff', '#ff4d6d', '#06d6a0', '#ffffff']) });
+  }
+  ui.timerChip.classList.remove('low');
+  $('btnAgain').focus();
+}
+function toggleMute() {
+  muted = !muted;
+  if (master) master.gain.value = muted ? 0 : .55;
+  $('muteWaves').style.display = muted ? 'none' : '';
+  $('btnMute').setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+}
+
+/* ---------------- Input ---------------- */
+function setAim(e) { const r = cvs.getBoundingClientRect(); aim.x = e.clientX - r.left; aim.y = e.clientY - r.top; aim.set = true; }
+cvs.addEventListener('pointermove', setAim);
+cvs.addEventListener('pointerdown', e => {
+  initAudio(); setAim(e);
+  if (e.pointerType !== 'mouse') wrap.classList.add('touch');
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  shoot(aim.x, aim.y);
+});
+cvs.addEventListener('contextmenu', e => e.preventDefault());
+const fire = $('fire');
+fire.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); initAudio(); fire.classList.add('press'); shoot(aim.x, aim.y); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fire.addEventListener(ev, () => fire.classList.remove('press')));
+if (window.matchMedia && matchMedia('(pointer: coarse)').matches) wrap.classList.add('touch');
+
+$('btnStart').addEventListener('click', startGame);
+$('btnAgain').addEventListener('click', startGame);
+$('btnRestart').addEventListener('click', startGame);
+$('btnResume').addEventListener('click', resumeGame);
+$('btnMenu').addEventListener('click', toMenu);
+$('btnMenu2').addEventListener('click', toMenu);
+$('btnPause').addEventListener('click', () => state === 'playing' ? pauseGame() : resumeGame());
+$('btnMute').addEventListener('click', () => { initAudio(); toggleMute(); });
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === ' ' && state === 'playing') { e.preventDefault(); shoot(aim.x, aim.y); }
+  else if (k === 'p' || k === 'escape') { state === 'playing' ? pauseGame() : state === 'paused' && resumeGame(); }
+  else if (k === 'r' && state !== 'menu') startGame();
+  else if (k === 'm') { initAudio(); toggleMute(); }
+  else if (k === 'enter' && (state === 'menu') && document.activeElement === document.body) startGame();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+window.addEventListener('blur', () => pauseGame());
+
+if ('ResizeObserver' in window) new ResizeObserver(resize).observe(wrap);
+window.addEventListener('resize', resize);
+resize();
+ui.menuBest.textContent = high;
+updateHUD();
+for (let i = 0; i < 3; i++) { spawnBird(difficulty()); birds[birds.length - 1].x = W * (.2 + Math.random() * .6); }
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render());
+})();
+</script>
+</body>
+</html>

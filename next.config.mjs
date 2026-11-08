@@ -6,11 +6,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  async rewrites() {
-    return {
-      beforeFiles: [{ source: '/', destination: '/bird-hunter.html' }],
-    }
-  },
   async headers() {
     return [
       {
